@@ -72,7 +72,7 @@ const config = {
         items: [
           {
             href: 'https://github.com/firezone/firezone',
-            label: 'GitHub repository',
+            label: 'GitHub',
             position: 'right',
           },
         ],
