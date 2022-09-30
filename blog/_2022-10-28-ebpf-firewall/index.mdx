@@ -1,0 +1,224 @@
+---
+slug: ebpf-firewall-post
+title: How We Built an eBPF-based General Purpose Packet Filter
+authors: [conectado]
+tags: [ebpf, firewall, rust, aya]
+---
+
+## Introduction
+
+As part of our migration to multi-site in Firezone the VPN and Firewall were rewritten in Rust. As part of that rewrite we decided to improve how we were handling the firewall.
+
+In the past we were using [nftables](https://netfilter.org/projects/nftables/), the way we did this was shelling-out to the console and use the nft cli.
+
+This has a number of problems, for one shelling out can be prone to error, inefficient and hard to unit-test, also there's no Rust lib to call into nftables and even the existing libraries in C can be too complicated to use. Furthermore, we were limited to nft's data structure which meant doing a lot of work to not mess up the rules, this in turn made doing improvements really slow.
+
+So after a lot of consideration we decided that creating our own firewall using [ebpf](https://ebpf.io/).
+
+## eBPF
+
+We will briefly go into what eBPF is, however If you want a more detailed introduction you can take a look at [the official introduction](https://ebpf.io/what-is-ebpf).
+
+### What is eBPF
+
+eBPF stands for extended Berkeley Packet Filter, which is an upgrade from BPF(Berkely Packet Filter), while eBPF brings a lot of improvements over BPF the gist is the same, run user-defined packet-filtering code inside of the kernel as part of the packet processing pipeline.
+
+This is an oversimplification because eBPF programs can be hooked into multiple different events in the kernel but for our intent and purposes, we just want to hook into the packet-classifier pipeline.
+
+### How the kernel safely run user-defined code
+
+eBPF has its own ISA and there is a runtime for said ISA in the kernel(in eBPF the implementation is JIT'd), the instructions allows calling into parts of the kernel that we might need and gives us the neccesary context to process a given packet.
+
+Furthermore, to prevent crashes in the kernel and hogging out resources before an eBPF program gets loaded into the kernel it goes through a verification process, this verification imposes a lot of limitations in the program as to prevent infinite loops and craches, i.e., it sets an upper-bound for the loop (or strictly prohibits them in older kernel versions) and in the number of instructions, also keeps tracks of read/writes to know that you are using valid memory locations.
+
+If you want to know more about the internals of eBPF [these are the official docs](https://www.kernel.org/doc/Documentation/networking/filter.txt) however I really recommend taking a look at [Cillium's doc on the topic](https://docs.cilium.io/en/stable/bpf/#bpf-guide) they go into much more detail with a lot of clarity.
+
+### Packet pipeline
+
+Without getting into the specific an eBPF program can be hooked into different hooks on the packet processing pipeline for the linux kernel. eBPF allows hooking into [XDP](https://www.iovisor.org/technology/xdp) which runs just after the packet reached the NIC. However, [XDP doesn't support Wireguard](https://lore.kernel.org/netdev/20200813195816.67222-1-Jason@zx2c4.com/T/) since wireguard doesn't have L2 headers, for more info on this see [this fly.io blogpost](https://fly.io/blog/bpf-xdp-packet-filters-and-udp/#xdp).
+
+Fret not, for eBPF can also hook into the network's [TC Ingress](https://man7.org/linux/man-pages/man8/tc-bpf.8.html) that doesn't make any assumption about the packet's header.
+
+### Maps
+
+Maps are the kernel structures that enables us to share data between the eBPF kernel program and a user-space program. Maps, as their name suggest allow us to store relations as `Key -> Value` the types of maps offered by eBPF is limited however there are a lot of them. For our use case we just need to concern us with [trie](https://github.com/torvalds/linux/blob/master/kernel/bpf/lpm_trie.c) and hash maps.
+
+Again I reffer to [cillium's documentation](https://docs.cilium.io/en/v1.12/bpf/#maps) for more information.
+
+### TL;DR
+
+eBPF is an ISA and its corresponding implementaiton for user-defined programs that run in the kernel that we used for filtering packets, however, the programs we can run have some severe limitations so that they don't crash the kernel.
+
+## Firewall
+
+With this in mind we wanted to write a Firewall that can allow/deny traffic based on the following:
+
+- Possibly a sender's `user_id`
+- Destination CIDR
+- Possibly a port-range along with possibly a protocol(TCP/UDP)
+
+We took an additional simplification to make the implementation easier(we will see why further along), you can configure the firewall to allow all or deny all, then each rule would just toggle that, so a firewall that denies all traffic with a rule for destination `10.20.30.40`, would deny all traffic from all sources to all destination except for traffic for `10.20.30.40` from any destination.
+
+### Aya
+
+When implementing the firewall in Rust two possible libraries
+
+- [aya](https://github.com/aya-rs/aya)
+- [redbpf](https://github.com/foniod/redbpf)
+
+`redbpf` relies on bindings to `libbpf` while `aya` only relies on `libc`, also, aya's tooling seems to be easier to use and it uses cargo's target for ebpf instead of relying on `cargo bpf` which is easier when writing the Firewall as a library.
+
+So taking that into account we went with `aya`.
+
+Normally, the way an aya program is structure, we have a user-space crate that loads and is a proxy between the eBPF program and the user and an ebpf crate which has more limitations(such as being `no-std`).
+
+Aya normally expects to be run as a binary and not as a library or as a separate userspace/bpf library, so we needed to do some tuning for the template to be able to run it as we wanted, a single library crate that you include.
+
+More about how we did this in a separate blogpost.
+
+### Architecture
+
+** TODO: ** Add diagrams
+
+So, with this information, we can plan an architecture.
+
+Thinking about the steps how ideally, the firewall would work:
+
+1. A packet arrives
+2. The source is classified into a `user_id` if any
+3. Check existing rules if match
+4. Decide REJECT/ACCEPT action based on previous step
+
+Let's go over how we can achieve this.
+
+### The anatomy of a rule
+
+As we said before a rule has 3 components
+
+- Associated `user_id`
+- Destination CIDR
+- Destination Port Ranges
+
+The `user_id` is an arbitrary name, the idea is that a single rule can associate multiple source ips, with a CIDR and optionally multiple port ranges.
+
+Rules need to be stored in eBPF's maps, that way we can update the maps during runtime to be able to update the rules.
+
+And we need to be able to lookup those maps using information from the incoming packets.
+
+The way we did this is having the following maps:
+
+- `SOURCE_MAP`: A hashmap mapping source ips to `id`s
+- `RULE_MAP`: A trie mapping CIDR to port ranges
+
+### `SOURCE_MAP`
+
+The `SOURCE_MAP` is really simple, we store the mapping IP -> ID, so we can associate let's say IP `10.10.10.3` and `10.10.10.4` with id `4` and `10.1.1.5` with id `7`. Now when a packet comes from `10.10.10.4` we lookup the map and get `4` and for `10.1.1.5` we get `7`.
+
+It's more interesting how we handle that after.
+
+### `RULE_MAP`
+
+[Tries](https://en.wikipedia.org/wiki/Trie) are prefix-matching trees, they let us efficiently store and lookup ranges grouped by prefix. For ips this is exactly how CIDR works.
+
+The nodes in the trie tree correspond to a an ip and a prefix, so `10.5.8.0/24` corresponds to to the bits of `10.5.8.0` and 24 bits so that node would match with `10.5.8.0` to `10.5.8.255` but if you store `10.5.8.128/25` that'd match with `10.5.8.128` to `10.5.8.255`.
+
+Both nodes can be store but the `lookup` method in the `trie` only allows us to find the node with the most specific match. so `10.5.8.170` would match with `10.5.8.128/25` and `10.5.8.110` would match with `10.5.8.0/24`.
+
+But in this case the CIDR are the keys that we can lookup, the values are the port ranges, how we store them is an interesting part of the firewall story, so we will talk about them in more detail later.
+
+This structure, still doesn't allow us to distinguish TCP and UDP and user ids.
+
+To solve this the key for the trie is a little more complicated, we prefix the ip with the user id and the protocol. So a key for TCP(6 is the protocol number) ranges with id 10 for ip `10.5.8.0/24` looks like `10.6.10.5.8.0` and the prefix is 32 (bits of id) + 8 (bits of protocol number) + 24 (bits of /24 CIDR) = 64.
+
+For sources with no id we use `0` as the id. For non-TCP/UDP packets, we store the rule in both the TCP and UDP key and look up TCP(arbitrarily) but only match for port 0 (which we use to encode all ports).
+
+### Another look at the ip matching
+
+Let's look again at the steps when a packet arrives:
+
+1. Packet arrives
+2. Lookup destination IP get an ID or use 0
+3. Create the lookup key (ID.PROTOCOL.DESTINATION_IP)
+4. Use the lookup key to get the port ranges
+5. Lookup the port in the port ranges
+6. REJECT/ACCEPT based on that
+
+Basically, this is a high-level on how the ebpf side works. Now, let's take a look at the userspace-side.
+
+### Userspace
+
+Now that we know how we access the rules let's see how we need to store them from userspace.
+
+Remember, that the Trie map provided by the kernel, for search, only have its lookup method that let us know the longest prefix. So let's think about this scenario:
+
+We store these rules:
+
+```
+10.0.0.0/24 port 80 Allowed
+10.0.0.1/32 port 23 Allowed
+```
+
+now a packet comes from 10.0.0.1 with port 80, and we use the Trie lookup method to see if it's allowed, the lookup method returns all the ports from the longest prefix, meaning port 23 is allowed but the packet has port 80 so it's denied.
+
+This is of course, erroneous because IP `10.0.0.1` is part of range `10.0.0.0/24` which has port 80 is allowed. So what do we do about this? Changing the trie API is impossible without modifying the kernel and even if we submit the PR for that the new API would only be included in the latest kernels.
+
+We could lookup manually each range before deciding an action, so when packet with `10.0.0.1` comes we check `10.0.0.1/32` then `10.0.0.0/31` the `10.0.0.0/30` so on and so on before taking a decision. The performance of this is bad, specially if we are going to do that about each packet.
+
+What we can do, is from userspace present an API that when adding rules, it propagates them to all pertinent ips, so:
+
+If you have:
+
+```
+10.0.0.1/32 port 23 Allowed
+```
+
+and you want to add `10.0.0.0/24 port 80`, the API would automatically propagate it to:
+
+```
+10.0.0.1/32 port 23, 80 Allowed
+10.0.0.0/24 port 80 Allowed
+```
+
+and if you have:
+
+```
+10.0.0.0/24 port 80 Allowed
+```
+
+then you add `10.0.0.1/32 port 23` the api actually updates the rules like:
+
+```
+10.0.0.1/32 port 23, 80 Allowed
+10.0.0.0/24 port 80 allowed
+```
+
+So you see, how the api automatically propagates rules to have a consistent table.
+
+## At last, CODE!
+
+With the previous section you should have a clear picture at the architecture of what we built and why but from now on we will **need** to see code.
+
+Will not go over how Aya's API or eBPF code works, hopefully it will be self-evident with the explanations until now enough to understand the gist of it.
+
+### Code structure
+
+As a
+
+### A rule
+
+So, how does a rule looks in reality:
+
+```rs
+#[repr(C)]
+#[derive(Clone, Copy)]
+#[cfg_attr(feature = "user", derive(Debug))]
+pub struct RuleStore {
+    // Sorted non-overlapping ranges
+    // bit 0-15: port-start
+    // bit 16-31: port-end
+    rules: [u32; MAX_RULES],
+    /// Keep this to < usize::MAX pretty please
+    /// But we do need the padding
+    rules_len: u32,
+}
+```
