@@ -51,6 +51,8 @@ const config = {
         docs: false,
         blog: {
           routeBasePath: '/',
+          blogSidebarTitle: 'All posts',
+          blogSidebarCount: 'ALL',
           showReadingTime: true,
         },
         theme: {

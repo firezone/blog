@@ -36,8 +36,8 @@ jobs:
           cache: 'npm'
       - name: Build site
         run: |
-          yarn install --frozen-lockfile
-          yarn run build
+          npm ci
+          npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
