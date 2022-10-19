@@ -1,17 +1,10 @@
-endi:
-  name: Endilie Yacop Sucipto
-  title: Maintainer of Docusaurus
-  url: https://github.com/endiliey
-  image_url: https://github.com/endiliey.png
+jamil:
+  name: Jamil Bou Kheir
+  title: Co-founder
+  url: https://github.com/jamilbk
+  image_url: https://www.gravatar.com/avatar/3c8434814eec26026718e992322648c8
 
-yangshun:
-  name: Yangshun Tay
-  title: Front End Engineer @ Facebook
-  url: https://github.com/yangshun
-  image_url: https://github.com/yangshun.png
-
-slorber:
-  name: Sébastien Lorber
-  title: Docusaurus maintainer
-  url: https://sebastienlorber.com
-  image_url: https://github.com/slorber.png
+jason:
+  name: Jason Gong
+  title: Co-founder / COO
+  url: https://github.com/gongjason
