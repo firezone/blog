@@ -10,7 +10,7 @@ const config = {
   tagline: 'Updates, How-tos, and more content from the Firezone team',
   url: 'https://blog.firezone.dev',
   // XXX: Change this to '/' when deploying to a blog.firezone.dev
-  baseUrl: '/blog/',
+  baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
