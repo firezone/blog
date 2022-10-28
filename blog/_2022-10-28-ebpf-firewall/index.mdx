@@ -58,15 +58,16 @@ eBPF is an ISA and its corresponding implementaiton for user-defined programs th
 
 With this in mind we wanted to write a Firewall that can allow/deny traffic based on the following:
 
-- Possibly a sender's `user_id`
 - Destination CIDR
-- Possibly a port-range along with possibly a protocol(TCP/UDP)
+- Possibly multiple sender IPs
+- Possibly a port-range along associated with UDP, TCP or both
 
-We took an additional simplification to make the implementation easier(we will see why further along), you can configure the firewall to allow all or deny all, then each rule would just toggle that, so a firewall that denies all traffic with a rule for destination `10.20.30.40`, would deny all traffic from all sources to all destination except for traffic for `10.20.30.40` from any destination.
+We took an additional simplification to make the implementation easier(we will see why further along), you can configure the firewall to allow all or deny all, then when a packet match a rule it'd invert that behavior: 
+> A firewall that denies all traffic with a rule for destination `10.20.30.40`, would deny all traffic from all sources to all destinations except for traffic for `10.20.30.40` from any destination. 
 
 ### Aya
 
-When implementing the firewall in Rust two possible libraries
+When implementing the firewall in Rust two possible libraries:
 
 - [aya](https://github.com/aya-rs/aya)
 - [redbpf](https://github.com/foniod/redbpf)
@@ -75,7 +76,7 @@ When implementing the firewall in Rust two possible libraries
 
 So taking that into account we went with `aya`.
 
-Normally, the way an aya program is structure, we have a user-space crate that loads and is a proxy between the eBPF program and the user and an ebpf crate which has more limitations(such as being `no-std`).
+Normally, the way an aya program is structured: we have a user-space crate that loads the eBPF program and is a proxy between it and the user and a crate that targets eBPF which has more limitations(such as being `no-std`).
 
 Aya normally expects to be run as a binary and not as a library or as a separate userspace/bpf library, so we needed to do some tuning for the template to be able to run it as we wanted, a single library crate that you include.
 
@@ -104,9 +105,9 @@ As we said before a rule has 3 components
 - Destination CIDR
 - Destination Port Ranges
 
-The `user_id` is an arbitrary name, the idea is that a single rule can associate multiple source ips, with a CIDR and optionally multiple port ranges.
+The `user_id` is an arbitrary name, the idea is that a single rule can associate multiple source ips, so we can associate a rule with an `id` and then we can update the `id` association with multiple ips during runtime.
 
-Rules need to be stored in eBPF's maps, that way we can update the maps during runtime to be able to update the rules.
+Rules need to be stored in eBPF's maps, that way we can update the maps during run-time from userspace to be able to update the rules.
 
 And we need to be able to lookup those maps using information from the incoming packets.
 
@@ -115,27 +116,33 @@ The way we did this is having the following maps:
 - `SOURCE_MAP`: A hashmap mapping source ips to `id`s
 - `RULE_MAP`: A trie mapping CIDR to port ranges
 
+** Note: ** There is actually an ipv6 and ipv4 version fo both of those maps, so we have 4 maps in total.
+
 ### `SOURCE_MAP`
 
 The `SOURCE_MAP` is really simple, we store the mapping IP -> ID, so we can associate let's say IP `10.10.10.3` and `10.10.10.4` with id `4` and `10.1.1.5` with id `7`. Now when a packet comes from `10.10.10.4` we lookup the map and get `4` and for `10.1.1.5` we get `7`.
 
-It's more interesting how we handle that after.
-
 ### `RULE_MAP`
 
-[Tries](https://en.wikipedia.org/wiki/Trie) are prefix-matching trees, they let us efficiently store and lookup ranges grouped by prefix. For ips this is exactly how CIDR works.
+[Tries](https://en.wikipedia.org/wiki/Trie) are prefix-matching trees, they let us efficiently store and lookup ranges grouped by prefix. For ips this is exactly how [CIDR](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing) works.
 
 The nodes in the trie tree correspond to a an ip and a prefix, so `10.5.8.0/24` corresponds to to the bits of `10.5.8.0` and 24 bits so that node would match with `10.5.8.0` to `10.5.8.255` but if you store `10.5.8.128/25` that'd match with `10.5.8.128` to `10.5.8.255`.
 
-Both nodes can be store but the `lookup` method in the `trie` only allows us to find the node with the most specific match. so `10.5.8.170` would match with `10.5.8.128/25` and `10.5.8.110` would match with `10.5.8.0/24`.
+Both nodes, `10.5.8.0/24 and `10.5.8.128/25`, could be stored but the `lookup` method in the `trie` only allows us to find the node with the most specific match. so `10.5.8.110` would match with `10.5.8.0/24` and `10.5.8.170` would match with `10.5.8.128/25` but we would never learn that it also match with `10.5.8.0/24`.
 
-But in this case the CIDR are the keys that we can lookup, the values are the port ranges, how we store them is an interesting part of the firewall story, so we will talk about them in more detail later.
+So a trie would give us a way to associate CIDR with... something? The question is what's this "something".
 
-This structure, still doesn't allow us to distinguish TCP and UDP and user ids.
+Well, we don't need an action, since we know the action is just inverting the default one. What we still lack to know if the rule matches is a port-range(With its protocol) and the associated `id`. 
 
-To solve this the key for the trie is a little more complicated, we prefix the ip with the user id and the protocol. So a key for TCP(6 is the protocol number) ranges with id 10 for ip `10.5.8.0/24` looks like `10.6.10.5.8.0` and the prefix is 32 (bits of id) + 8 (bits of protocol number) + 24 (bits of /24 CIDR) = 64.
+However, if we store multiple rules, all associated with the same destination IP we would need to lookup all the rules for each packet and this is incredibly inefficient. But there's a solution, we can easily store the ID and protocol in the key!
 
-For sources with no id we use `0` as the id. For non-TCP/UDP packets, we store the rule in both the TCP and UDP key and look up TCP(arbitrarily) but only match for port 0 (which we use to encode all ports).
+So instead of storing as the key `10.5.8.0/24` and when we do lookup we get all the other data we store as the key `6.TCP.10.5.8.0` and the prefix instead of 24 is 33, 4 extra bytes for the id, 1 for the protocol(We use the protocol number).
+
+If this is still unclear we will see more when we discuss the specific of the code, just know that we store the id and protocol as part of the key, so we can compose the number `id.protocol.ip` with the prefix and look that up.
+
+The result value will be the port range, which we have to map to the port of the incoming packet, we will talk more about how we do this below. 
+
+For sources with no id we use `0` as the id. For non-TCP/UDP packets, we store the rule in both the TCP and UDP key and look up TCP(arbitrarily) but only match for port 0 (which we use to encode all ports), for rules with both protocols, we store the rule twice once for TCP and once for UDP.
 
 ### Another look at the ip matching
 
@@ -211,6 +218,8 @@ As a
 
 ### A rule
 
+#### eBPF
+
 So, how does a rule looks in reality:
 
 ```rs
@@ -227,3 +236,11 @@ pub struct RuleStore {
     rules_len: u32,
 }
 ```
+
+#### Useraspace
+
+#### Transalation
+
+### Propagating Rules
+
+### eBPF Rule lookup
