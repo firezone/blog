@@ -25,13 +25,18 @@ eBPF stands for extended Berkeley Packet Filter, which is an upgrade from BPF(Be
 
 This is an oversimplification because eBPF programs can be hooked into multiple different events in the kernel but for our intent and purposes, we just want to hook into the packet-classifier pipeline.
 
+
 ### How the kernel safely run user-defined code
 
-eBPF has its own ISA and there is a runtime for said ISA in the kernel(in eBPF the implementation is JIT'd), the instructions allows calling into parts of the kernel that we might need and gives us the neccesary context to process a given packet.
+eBPF has its own ISA and there is a runtime for said ISA in the kernel (JIT'd), the instructions allows calling into parts of the kernel that we might need and gives us the neccesary context to process a given packet.
 
-Furthermore, to prevent crashes in the kernel and hogging out resources before an eBPF program gets loaded into the kernel it goes through a verification process, this verification imposes a lot of limitations in the program as to prevent infinite loops and craches, i.e., it sets an upper-bound for the loop (or strictly prohibits them in older kernel versions) and in the number of instructions, also keeps tracks of read/writes to know that you are using valid memory locations.
+Furthermore, to prevent crashes in the kernel and hogging out resources before an eBPF program gets loaded into the kernel it goes through a verification process, a verificator program sets a bunch of limitations to the program to prevent situations like infinite loops and crashes: 
 
-If you want to know more about the internals of eBPF [these are the official docs](https://www.kernel.org/doc/Documentation/networking/filter.txt) however I really recommend taking a look at [Cillium's doc on the topic](https://docs.cilium.io/en/stable/bpf/#bpf-guide) they go into much more detail with a lot of clarity.
+* It sets an upper-bound for the number of times a loop within the code can run (or strictly prohibits them in older kernel versions).
+* An upper-bound in the number of instructions the program can execute in total.
+* Keeps tracks of read/writes to know that you are using valid memory locations.
+
+To know the specifics of how it works, you should take a look at the [kernel's doc](https://www.kernel.org/doc/Documentation/networking/filter.txt) and even more in details you can take a look at [cillium's docs](https://docs.cilium.io/en/stable/bpf/#bpf-guide).
 
 ### Packet pipeline
 
