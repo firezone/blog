@@ -381,11 +381,163 @@ As you see doing this is really easy. We still need to do some small work to get
 
 ### Propagating Rules
 
-Then the last interesting part from userspace is how to propagate the rules
+Then the last interesting part from userspace is how to propagate the rules.
+
+So when you insert a new rule, you need to keep track of all the rules that would include it, since when a lookup happen it would return the new rule because it's more specific. So basically the gist is traverse all rules and include all the port ranges from those "above" in the new rule.
+
+```rs
+(The code here requires a lot of context on the specifics of how we did this but it's nothing interesting, check if you can rewrite it in a "context-free" way)
+```
+
+And then there could be more specific rules that are included in the new rule, you need to propagate the new rule (the port-range) to those.
+
+```rs
+(The code here requires a lot of context on the specifics of how we did this but it's nothing interesting, check if you can rewrite it in a "context-free" way)
+```
 
 ### eBPF Rule lookup
 
-here show the packet processing + lookup algorithm
+
+When a packet arrives we first extract the network headers (source, destination, protocol and port).
+
+```rs
+    let (source, dest, proto) = load_ntw_headers(&ctx, version)?;
+    let port = get_port(&ctx, version, proto)?;
+    let class = source_class(source_map, source);
+    let action = get_action(class, dest, rule_map, port, proto);
+```
+
+Then, we get the source id:
+
+```rs
+unsafe fn source_class<const N: usize>(
+    source_map: &HashMap<[u8; N], u32>,
+    address: [u8; N],
+) -> Option<[u8; 4]> {
+    source_map.get(&address).map(|x| u32::to_be_bytes(*x))
+}
+```
+Then we try to calculate what action we should take:
+
+```rs
+fn get_action<const N: usize, const M: usize>(
+    group: Option<[u8; 4]>,
+    address: [u8; N],
+    rule_map: &LpmTrie<[u8; M], RuleStore>,
+    port: u16,
+    proto: u8,
+) -> i32 {
+    let proto = if port == 0 { TCP } else { proto };
+    let default_action = get_default_action();
+
+    let rule_store = rule_map.get(&Key::new((M * 8) as u32, get_key(group, proto, address)));
+    if is_stored(&rule_store, port) {
+        return invert_action(default_action);
+    }
+
+    if group.is_some() {
+        let rule_store = rule_map.get(&Key::new((M * 8) as u32, get_key(None, proto, address)));
+        if is_stored(&rule_store, port) {
+            return invert_action(default_action);
+        }
+    }
+
+    default_action
+}
+```
+
+Here we try to extract the action from the existing map, we get the `RuleStore` by constructing the key corresponding to that packet:
+
+```rs
+fn get_key<const N: usize, const M: usize>(
+    group: Option<[u8; 4]>,
+    proto: u8,
+    address: [u8; N],
+) -> [u8; M] {
+    let group = group.unwrap_or_default();
+    let mut res = [0; M];
+    let (res_left, res_address) = res.split_at_mut(5);
+    let (res_group, res_proto) = res_left.split_at_mut(4);
+    res_group.copy_from_slice(&group);
+    res_proto[0] = proto;
+    res_address.copy_from_slice(&address);
+    res
+}
+```
+And most importantly we lookup in the rulestore if the `port` that arrived exists.
+
+```rs
+    pub fn lookup(&self, val: u16) -> bool {
+        // 0 means all ports
+        if self.rules_len > 0 {
+            // SAFETY: We know that rules_len < MAX_RULES
+            if start(*unsafe { self.rules.get_unchecked(0) }) == 0 {
+                return true;
+            }
+        }
+
+        // We test for 0 in all non tcp/udp packets
+        // it's worth returning early for those cases.
+        if val == 0 {
+            return false;
+        }
+
+        // Reimplementation of partition_point to satisfy verifier
+        let mut size = self.rules_len as usize;
+        // appeasing the verifier
+        if size >= MAX_RULES {
+            return false;
+        }
+        let mut left = 0;
+        let mut right = size;
+        #[cfg(not(feature = "user"))]
+        let mut i = 0;
+        while left < right {
+            let mid = left + size / 2;
+
+            // This can never happen but we need the verifier to believe us
+            let r = if mid < MAX_RULES {
+                // SAFETY: We are already bound checking
+                *unsafe { self.rules.get_unchecked(mid) }
+            } else {
+                return false;
+            };
+            let cmp = start(r) <= val;
+            if cmp {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+            size = right - left;
+
+            #[cfg(not(feature = "user"))]
+            {
+                i += 1;
+                // This should never happen, here just to satisfy verifier
+                if i >= MAX_ITER {
+                    return false;
+                }
+            }
+        }
+
+        if left == 0 {
+            false
+        } else {
+            let indx = left - 1;
+            if indx >= MAX_RULES {
+                return false;
+            }
+            // SAFETY: Again, we are already bound checking
+            end(*unsafe { self.rules.get_unchecked(indx) }) >= val
+        }
+    }
+```
+
+If 0 is included we consider it to be "all ports".
+
+Otherwise we basically do binary search on the starting port to see the maximum starting port that is less than the port we are checking for and then we check for the ending port to see if it's more than the port we are checking.
+
+Binary search for the maximum that keeps a predicate as true is an algorithm that already exists in Rust called partition point, we needed to reimplement it to make it compatible with eBPF due to the verifier limitations.
 
 ## Conclusion
 
