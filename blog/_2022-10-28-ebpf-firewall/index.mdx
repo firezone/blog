@@ -206,6 +206,8 @@ then you add `10.0.0.1/32 port 23` the api actually updates the rules like:
 
 So you see, how the api automatically propagates rules to have a consistent table.
 
+### Port Ranges
+
 ## At last, CODE!
 
 With the previous section you should have a clear picture at the architecture of what we built and why but from now on we will **need** to see code.
@@ -214,7 +216,16 @@ Will not go over how Aya's API or eBPF code works, hopefully it will be self-evi
 
 ### Code structure
 
-As a
+We have 3 crates in our repo:
+* Userspace
+* Common (This contains the codebase shared by both)
+* eBPF
+
+From userspace we have the `Firewall` which is the entrypoint for everything. You first initialize and load a firewall by calling `Firewall::new` for a given interface.
+
+The most interesting part is the `RuleTracker` this is an internal struct (which is almost directly exposed by `Firewall` using pass-through methods), this is where the magic happens, userspace `Rule`s are converted into valid eBPF `Rule`, we keep track of them to propagate them and obviously add them to the maps in eBPF.
+
+So let's see how that happens.
 
 ### A rule
 
@@ -224,23 +235,93 @@ So, how does a rule looks in reality:
 
 ```rs
 #[repr(C)]
-#[derive(Clone, Copy)]
-#[cfg_attr(feature = "user", derive(Debug))]
 pub struct RuleStore {
     // Sorted non-overlapping ranges
     // bit 0-15: port-start
     // bit 16-31: port-end
     rules: [u32; MAX_RULES],
-    /// Keep this to < usize::MAX pretty please
-    /// But we do need the padding
     rules_len: u32,
 }
 ```
 
+Structs in eBPF need to be `repr(C)`, which just means it uses C's ABI, eBPF structs need to be simple array of bytes (with no padding to convince the eBPF verifier that we never read uninitialized memory).
+
+So, let's analyze this struct, this is the value that we are going to store in the map. This only need to be the port-ranges (remember that the key already stores the `id`, `destination`, `protocol`).
+
+So we store the rules as an array of port-ranges. With a range being the inclusive intervals of the port covered by the rule. we use the first 2 bytes for the starting port and the last 2 bytes for the ending port.
+
+Then in `rules_len` we just have the number of rules stored (the rest is padded with 0).
+
 #### Useraspace
 
+From userspace we have many different structs that represent a rule at different stage of processing, these are not complex but we have different parts of the code that require different information for what to do with the rule.
+
+But for user-facing API a rule looks like:
+
+```rs
+pub enum Rule {
+    V4(RuleImpl<Ipv4Net>),
+    V6(RuleImpl<Ipv6Net>),
+}
+```
+
+Alright, not very interesting without knowing how `RuleImpl` looks:
+
+```rs
+pub struct RuleImpl<T> {
+    pub(crate) id: Option<u32>,
+    pub(crate) dest: T,
+    pub(crate) port_range: Option<PortRange>,
+}
+```
+
+So we see that a rule in userspace contains all the information for a rule but the important part is:
+
+```rs
+pub(crate) struct PortRange {
+    pub(crate) ports: RangeInclusive<u16>,
+    pub(crate) proto: Protocol,
+}
+```
+
+Cool! Use rust's `RangeInclusive<T>` to represent ports with `u16` as a port and a `Protocol` (which is just an enum to indicate the kind of rule)
+
+So when we do `Firewall::add_rule(rule)` we need to make it arrive to eBPF with the struct we previously saw.
+
+We also need to propagate correctly like we saw in the previous userspace architecture, so let's walk through how does that work!
+
 #### Transalation
+
+So at some point we want to add the `rule` to the eBPF map. For that, we first need to determine the key that we are going to use.
+
+That's easy:
+
+```rs
+// Convert the id to big endian bytes
+let key_id = id.to_be_bytes();
+
+// Convert the ip to bytes
+let key_cidr = ip.normalize().as_octets();
+let mut key_data = [0u8; N];
+
+// Store in a new `key_data`: protocol.id.ip
+let (left_key_data, cidr) = key_data.split_at_mut(5);
+let (id, prot) = left_key_data.split_at_mut(4);
+prot[0] = proto;
+id.copy_from_slice(&key_id);
+cidr.copy_from_slice(key_cidr.as_ref());
+
+// Calculate the prefix and return the key
+Key::new(
+    u32::from(ip.prefix()) + (left_key_data.len() * 8) as u32,
+    key_data,
+)
+```
+
+Cool, this is what we are going to insert to the eBPF map
 
 ### Propagating Rules
 
 ### eBPF Rule lookup
+
+## Conclusion
