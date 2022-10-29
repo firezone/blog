@@ -311,17 +311,82 @@ prot[0] = proto;
 id.copy_from_slice(&key_id);
 cidr.copy_from_slice(key_cidr.as_ref());
 
-// Calculate the prefix and return the key
+// Calculate the prefix and return the eBPF key
 Key::new(
     u32::from(ip.prefix()) + (left_key_data.len() * 8) as u32,
     key_data,
 )
 ```
 
-Cool, this is what we are going to insert to the eBPF map
+Cool, this is the key that we are going to insert to the eBPF map
+
+Now we need to calculate the value that we are going to insert.
+
+Remember that the `rule` field in the ebpf `RuleStore` looked like this:
+
+```rs
+    rules: [u32; MAX_RULES],
+```
+
+So we have a maximum number of rules, one reason for this, is that we need to store an array, we can't store a vector (we can't share heap allocations). But this number is also limited by the lookup algorithm.
+
+Remember, that the verifier imposes a limit on the number of times a loop can run, so if we linearly search all ranges we were getting capped at around 1000 intervals we would reach the upper limit on loops, this is okay, this would be enough but we can do better.
+
+If we can somehow sort the port ranges we could do binary search, this means less loop iterations and faster lookup in general. But how to sort it exactly?
+
+This is actually the reason each rule, doesn't have an Accept/Reject instead it only inverts the default behavior, also why we store all UDP rules together and TCP rules together.
+
+To sort, we just need to merge intervals. Merging intervals is a well studied problem that can be done in `O(N)` and since it's from userspace we could afford worse performance.
+
+Mergining intervals just means that from the existing intervals we create a series of new non-overlapping intervals that cover the same area and we sort them.
+
+So `[10-20, 15-30, 6-9]` would become `[6-9, 10-30]`. Then we can do binary search on this interval. We will see below the specific of that but this is the code to get the intervals from a series of port ranges:
+
+
+```rs
+fn resolve_overlap(port_ranges: &mut [&PortRange<T>]) -> Vec<(u16, u16)>
+{
+    let mut res = Vec::new();
+    
+    // Sort the ranges by the starting potr
+    port_ranges.sort_by_key(|p| p.ports.ports.start());
+
+    Get the first prot into the result
+    if let Some(range) = port_ranges.first() {
+        res.push((*range.ports.ports.start(), *range.ports.ports.end()));
+    } else {
+        return res;
+    }
+
+    // Go through each range
+    for range in &port_ranges[1..] {
+        let last_res = res
+            .last_mut()
+            .expect("should contain at least the first element of port_ranges");
+
+        // If the new range fall within the last one extend it
+        if last_res.1 >= *range.ports.ports.start() {
+            *last_res = (last_res.0, last_res.1.max(*range.ports.ports.end()));
+        // Otherwise, add a new range
+        } else {
+            res.push((*range.ports.ports.start(), *range.ports.ports.end()));
+        }
+    }
+    
+    res
+}
+```
+
+As you see doing this is really easy. We still need to do some small work to get it from `Vec<(u16, u16)>` to  `[u32; RULE_MAX]` but you can imagine it's pretty trivial.
 
 ### Propagating Rules
 
+Then the last interesting part from userspace is how to propagate the rules
+
 ### eBPF Rule lookup
 
+here show the packet processing + lookup algorithm
+
 ## Conclusion
+
+ebpf is awesome but complicated! (something along those lines) and future for firezone rearchitecture and check it out!
