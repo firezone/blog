@@ -1,16 +1,18 @@
 ---
 slug: first-offsite-retro
-title: Firezone's first offsite
+title: Firezone’s first offsite
 description: What did we do, and was it worth it?
 authors: [jason]
 tags: [company, offsite]
 ---
 
-My first startup job was at Strong, a workout-tracking app that was pretty popular at the time. The founders were “digital nomads,” and the team was fully remote. Back in 2016, it was highly uncommon. We spent a lot of time creating processes to work together effectively on opposite sides of the world.
+My first startup job was at [Strong](https://www.strong.app/), a workout-tracking app that was pretty popular at the time. The founders were “digital nomads,” and the team was fully remote.
 
-One of these rituals was regularly meeting up in person.
+Back in 2016, it was highly uncommon.
 
-[TODO: add pics of Taipei, Norway, prague]
+We spent a lot of time creating processes to work together effectively on opposite sides of the world. One of these rituals was regularly meeting up in person.
+
+![digital nomads](https://user-images.githubusercontent.com/52545545/211626078-6f64a4f4-ec37-40cd-8bb5-a6b9b122f351.png)
 
 At first, it was by accident. Since everyone was traveling anyway, we would coordinate being in the same city at the same time. 
 
@@ -20,18 +22,18 @@ It felt better to work together.
 
 ## Why try this at Firezone?
 
-If you believe a small network security startup can take a sizable bite out of the usual suspects of legacy VPN products, there’s a few ways it can happen. Many of them involve assembling an all-star team who can execute quickly to build a great product.
+If you believe a small network security startup can take a sizable bite out of the usual suspects of legacy VPN products, there are a few ways it can happen. Many involve assembling an all-star team who can execute quickly to build a great product.
 
 This is much easier when everyone is comfortable sharing ideas and engaging in lively debate. Plus, it’s a lot more fun.
 
-So, we decided to try it out. After much planning, cancelled bookings, and a few long flights later, our team met up in Santa Rosa, California.
+So, we decided to try it out. After much planning, canceled bookings, and a few long flights later, our team met up in Santa Rosa, California.
 
 ![image](https://user-images.githubusercontent.com/52545545/211517211-ff1d5503-a367-4e6b-a670-067c447ed415.png)
 
 :::info
 My co-founder Jamil shares similar views about working together in person. He’s an even earlier pioneer in working remotely. I keep bugging him to write a blog about his 3 year journey living in a tiny house towed by his truck.
 
-For now I’ll leave you with a link to his slideshow: https://tinyhouse.jamilbk.com/.
+For now, I’ll leave you with a link to his slideshow: https://tinyhouse.jamilbk.com/.
 :::
 
 ## What did we work on?
@@ -42,7 +44,7 @@ Our itinerary included architecture planning, a multi-day hackathon, and plenty 
 
 One common compliment from our users is how snappy and effortless it is to use the Firezone Web UI. Many IT teams manage hundreds of concurrent users without a hitch. However, as pretty as our web portal is, we’d prefer if you rarely had to open it up. 
 
-Our REST API follows a series of updates to make Firezone easier to automate. This is why we made Docker the preferred (and soon to be only) method of deploying Firezone. And also, why we’re building on the work from our community to release a first-party teraform provider.
+Our REST API follows a series of updates to make Firezone easier to automate. This is why we made Docker the preferred (and soon-to-be only) method of deploying Firezone. And also why we’re building on the work from our community to release a first-party Terraform provider.
 
 You can take a look at the PR here: https://github.com/firezone/firezone/pull/1155.
 
@@ -50,19 +52,19 @@ You can take a look at the PR here: https://github.com/firezone/firezone/pull/11
 
 Since we started the project a year ago, we have added additional features making Firezone suitable for larger teams. These organizations typically have more complex network architectures, sometimes spanning multiple cloud providers and on-prem environments.
 
-Currently the Firezone gateway is tightly coupled with the control plane. To support multi-site environments, we’ll need to support managing multiple gateways with a single control-plane. During the off-site, we architected and began work this major change in the product. 
+The Firezone gateway is tightly coupled with the control plane. To support multi-site environments, we’ll need to support managing multiple gateways with a single control-plane. During the offsite, we architected and began work on this major change. 
 
 Take a look at the work in progress in this PR: https://github.com/firezone/firezone/pull/1205. 
 
 ### Documentation improvements
 
-We added additional docs on a few topics, including: debug logs, split tunnel DNS considerations, and common troubleshooting issues.
+We added additional docs on a few topics, including debug logs, split tunnel DNS considerations, and common troubleshooting issues.
 
-SEO was not top of mind when writing our docs, but we find ourselves part of the zero-sum game that appeases our Google overlords. Since Firezone is in active development, our deployment and configuration instructions often change.
+SEO was not top of mind when writing our docs, but we found ourselves part of the zero-sum game that appeases our Google overlords. Since Firezone is in active development, our deployment and configuration instructions often change.
 
 ![](https://user-images.githubusercontent.com/52545545/211517741-4efb596a-3765-40d8-b483-f807f3a88e86.png)
 
-Whether for goodwill or profit, you’ll find guides of various quality on the internet. Recently, we’ve found these ranking higher than our first-party guides on Google. This is a problem because these guides are quickly outdated and often inaccurate. We know many prefer searching on Google instead of directly visiting our docs, so we made some updates to rank higher for popular searches.
+Whether for goodwill or profit, you’ll find guides of various quality on the internet. Recently, we’ve seen these ranking higher than our first-party guides on Google. This is a problem because these guides are quickly outdated and often inaccurate. We know many prefer searching on Google instead of directly visiting our docs, so we made some updates to rank higher for popular searches.
 
 ### Having a good time
 
@@ -74,13 +76,13 @@ If this looks like something you’d be interested in doing, we’re always hiri
 
 ## Lessons learned for next time
 
-Since this was our first off-site, some things did not go according to plan. Here’s a small list of hiccups and our learnings.
+Since this was our first offsite, some things could have gone better. Here’s a small list of hiccups and our learnings.
 
 ### Time to close your tabs
 
 <img src="https://user-images.githubusercontent.com/52545545/211503302-4b2e2e74-06e8-4929-aa5b-a336af25a450.png" width="400" />
 
-If you’re booking an AirBnb, make sure to check for planned maintenance and outages. We were notified 3 days before arrival the power would be out during work hours for weekdays.
+If you’re booking an Airbnb, check for planned maintenance and outages. We were notified three days before arrival the power would be out during work hours on two weekdays.
 
 We made it work by sharing battery banks and migrating to the local coffee shop when our batteries died. Luckily Firezone is just about peak power efficiency for a VPN, so we all got a few extra minutes of battery.
 
@@ -111,8 +113,8 @@ In a few short days, we:
 
 We could have accomplished the same thing over a few long Zoom calls and chat threads, but not as quickly. There’s something about mind melding over a few days of intense work that’s hard to replicate.
 
-So, will we have another off-site? Definitely!
+So, will we have another offsite? Definitely!
 
-You can also expect more blog posts from us. One of our New Years resolutions at Firezone is to write more. We want to be transparent with how we build our product, run our company, and make important decisions that impact you. We do this because we don’t take your trust in Firezone for granted.
+You can also expect more blog posts from us. One of our New Year's resolutions at Firezone is to write more. We want to be transparent with how we build our product, run our company, and make important decisions that impact you. We do this because we don’t take your trust in Firezone for granted.
 
 Until next time!
