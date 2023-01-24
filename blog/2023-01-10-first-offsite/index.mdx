@@ -29,45 +29,21 @@ So, we decided to try it out. After much planning, canceled bookings, and a few 
 
 ![offsite office](https://user-images.githubusercontent.com/52545545/211517211-ff1d5503-a367-4e6b-a670-067c447ed415.png)
 
-## What did we work on?
+## What did we do?
 
-Our itinerary included architecture planning, a multi-day hackathon, and plenty of fun activities. Let’s start with what we built.
+Our itinerary included architecture planning, a multi-day hackathon, and plenty of fun activities around the Bay Area. 
 
-### REST API v0
+The focus of the off-site was building. We each defined a few tasks that could realistically be completed by the end of the trip. Here's a short summary of what we accomplished:
 
-One common compliment from our users is how snappy and effortless it is to manage Firezone with the Web UI. Many IT teams support hundreds of concurrent users without a hitch. However, as fetching as our web portal is, we’d prefer if you rarely had to open it up. 
+* REST API v0: Many IT teams use our snappy web portal to support hundreds of concurrent users without a hitch. However, we’d prefer if you rarely had to open it up. [PR here](https://github.com/firezone/firezone/pull/1155).
+* Updating the Gateway: The Firezone gateway is tightly coupled with the control plane. To support larger teams with multi-site environments, we’ll need to support managing multiple gateways under a single control-plane. Work-in-progress in [this PR](https://github.com/firezone/firezone/pull/1205). 
+* Docs improvements: We wrote a few new docs on debug logs, split tunnel DNS considerations, and common troubleshooting issues. Details in [this PR](https://github.com/firezone/firezone/pull/1194).
 
-Our [REST API](https://docs.firezone.dev/reference/rest-api/?utm_source=blog) follows a series of updates to make Firezone easier to automate. This is why we made Docker the preferred method of deploying Firezone, and also why we’re building on the work from our community to release a first-party Terraform provider.
-
-You can take a look at the PR [here](https://github.com/firezone/firezone/pull/1155).
-
-### Splitting the gateway from the control plane
-
-Since we started the project a year ago, we’ve built features to make Firezone more suitable for larger teams. These organizations sometimes have complex network architectures, often spanning multiple cloud vendors and on-prem environments.
-
-The Firezone gateway is tightly coupled with the control plane. To support multi-site environments, we’ll need to support managing multiple gateways under a single control-plane. During the offsite, we architected and began work on this major change. 
-
-Take a look at the work in progress in [this PR](https://github.com/firezone/firezone/pull/1205). 
-
-### Documentation improvements
-
-We added additional docs on a few topics, including debug logs, split tunnel DNS considerations, and common troubleshooting issues.
-
-SEO was not top of mind when writing our docs, but we found ourselves part of the zero-sum game that appeases our Google overlords.
-
-Whether for goodwill or profit, you’ll find guides for Firezone of varying quality on the internet. Recently, we’ve noticed these ranking higher than our first-party docs.
-
-![google results](https://user-images.githubusercontent.com/52545545/211517741-4efb596a-3765-40d8-b483-f807f3a88e86.png)
-
-This is a problem because these guides are quickly outdated and often inaccurate. We know many prefer searching on Google instead of directly visiting our docs, so we made some updates to rank higher for popular searches.
-
-Take a look at the PR [here](https://github.com/firezone/firezone/pull/1194).
-
-### Having a good time
-
-![collage](https://user-images.githubusercontent.com/52545545/211988059-02f3083a-116b-462e-a5ff-90af4fab63fc.png)
+Of course, a visit to the Bay Area would not be complete without a tour of San Francisco. We visited the usual landmarks and had a lot of seafood.
 
 Of special mention are the team dinners. As someone whose culinary talents rival his passion for building security products, Jamil (Co-founder & CEO) made our team dinners very memorable. You can follow his musings at [@jamilbk](https://twitter.com/jamilbk).
+
+![collage](https://user-images.githubusercontent.com/52545545/211988059-02f3083a-116b-462e-a5ff-90af4fab63fc.png)
 
 If this looks like something you’d be interested in doing, [we’re always hiring](https://www.ycombinator.com/companies/firezone/jobs)!
 
@@ -75,13 +51,15 @@ If this looks like something you’d be interested in doing, [we’re always hir
 
 Since this was our first offsite, some things could have gone better. Here’s a small list of hiccups and our learnings.
 
-### Time to close your tabs
+### Close your tabs!
 
 <img src="https://user-images.githubusercontent.com/52545545/211503302-4b2e2e74-06e8-4929-aa5b-a336af25a450.png" width="400" />
 
 If you’re booking an Airbnb, check for planned maintenance and outages. We were notified three days before arrival the power would be out during work hours on two weekdays.
 
 We made it work by sharing battery banks and migrating to the local coffee shop when our batteries died. Luckily Firezone is just about peak power efficiency for a VPN, so we all gained a few extra minutes of battery.
+
+When you're building software, electricity and internet are pretty much the only things you can't do without. Next time we'll pack a large power bank.
 
 ### Lumbar support is under-rated
 
@@ -91,14 +69,15 @@ Even better, leave heads down work until after the offsite. Instead, prioritize 
 
 ### Stock the right fuel
 
-![snacks tier list](https://user-images.githubusercontent.com/52545545/211512901-37685775-b29d-4aab-b37f-f9ae165cde73.png)
-_Hard disagree with the above tier list?
-[Make your own](https://tiermaker.com/create/startup-hackathon-snack-tier-list-15538965)
-and [share it with us](https://twitter.com/firezonehq)._
-
 We got carried away at Costco. Our out-of-town guests had never witnessed the spectacle of an American snack aisle. Fortunately, our talented engineers can turn Funyuns into elegant lines of Rust code (shoutout [@Gabi](https://github.com/conectado)). 
 
 All jokes aside, you’ll need the right fuel for your hackathons and deep product discussions. We recommend stocking up with plenty of coffee and healthy snacks.
+
+### Plan ahead, it will pay off
+
+As is often the case with startups, we planned the trip on short notice. This meant many last-minute restaurant bookings and trips to the store for basic supplies.
+
+So, make a shopping list, book a few restaurants in advance, and have a backup plan. If you're looking for a template, take a look at this [guide](https://posthog.com/handbook/company/offsites#how-to-plan-an-offsite-in-8-weeks---a-checklist) from our friends at PostHog. A great checklist is hard to beat.
 
 ## What’s next?
 
