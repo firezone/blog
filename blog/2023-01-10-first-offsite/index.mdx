@@ -35,17 +35,21 @@ So we decided to try it out. After much planning, canceled bookings, and a few l
 
 Our itinerary included architecture planning, a multi-day hackathon, and plenty of fun activities around the Bay Area. 
 
+![collage](https://user-images.githubusercontent.com/52545545/211988059-02f3083a-116b-462e-a5ff-90af4fab63fc.png)
+
 The focus of the off-site was building. We each defined a few tasks that could realistically be completed by the end of the trip. So what did we work on?
 
 * A new Firezone gateway (coming in 0.8!) that will eventually allow decoupling the web portal from the WireGuard data plane. A single Firezone web portal will soon be able to manage hundreds or even thousands of little Firezone gateways securing access for their respective private resources. More details to come!
 * A [new REST API in 0.7](https://github.com/firezone/firezone/releases) to allow configuring Firezone in a more automatable way. Users love our snappy web portal, but nothing beats the power of an API for automation.
 * Various documentation improvements to improve consistency between Omnibus and Docker sections, detail logging, and implement a v1 style guide.
 
-Of course, a visit to the Bay Area would not be complete without a tour of San Francisco. We visited the usual landmarks and had a lot of seafood.
+Of course, no visit to the Bay Area would be complete without a tour of San Francisco. It rained most of the time, so we missed out on much of the picturesque hiking. But we still managed to snap some photos of the Golden Gate bridge and devour a few In-N-Out burgers.
 
-Of special mention are the team dinners. As someone whose culinary talents rival his passion for building security products, Jamil (Co-founder & CEO) made our team dinners very memorable. You can follow his musings at [@jamilbk](https://twitter.com/jamilbk).
+Of special mention are the team dinners. Remote companies lack that familiar bond typically formed over team lunches in the office, so we sought to recreate that when we met in person. As an added bonus, we also split cooking duties. In many ways preparing food for your teammates is like opening a pull request: make something, request feedback on it, then merge and enjoy.
 
-![collage](https://user-images.githubusercontent.com/52545545/211988059-02f3083a-116b-462e-a5ff-90af4fab63fc.png)
+As someone whose culinary talents rival his passion for building security products, our resident chef [Jamil](https://twitter.com/jamilbk) led most of the culinary endeavors, including a 2-hour drive around Santa Rosa in search of live dungeness crab.
+
+![team dinner](https://user-images.githubusercontent.com/167144/214394961-ecbff7d8-2f9c-48a6-a906-c387366169f3.jpeg)
 
 
 ## Lessons learned for next time
@@ -58,9 +62,11 @@ Since this was our first offsite, some things could have gone better. Here’s a
 
 If you’re booking an Airbnb, check for planned maintenance and outages! We were notified three days before arrival the power would be out during two full workdays.
 
-We made it work by sharing battery banks and migrating to the local coffee shop when our batteries died. Luckily Firezone is just about peak power efficiency for a VPN, so we all gained a few extra minutes of battery.
+Fortunately we had a small power bank and mobile hotspot with unlimited data. Unfortunately, our lead Rust engineer's beefy Linux machine only gets a single hour of battery life on a full charge.
 
-When you're building software, electricity and internet are pretty much the only things you can't do without. Next time we'll pack a large power bank.
+When his machine died, we migrated to our local coffee shop where power and WiFi were surprisingly abundant. _Editor's note: Coffee shops in Santa Rosa are much more accommodating as a makeshift office than most in San Francisco._
+
+When you're building software, electricity and internet are vital -- splurge for that bigger battery bank and faster hotspot!
 
 ### Lumbar support is underrated
 
