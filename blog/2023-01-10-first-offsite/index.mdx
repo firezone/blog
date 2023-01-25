@@ -27,7 +27,7 @@ As a startup, our biggest advantage is the ability to move quickly as a team.
 
 This is much easier when everyone is comfortable sharing ideas and engaging in lively debate. Plus, it’s a lot more fun.
 
-So, we decided to try it out. After much planning, canceled bookings, and a few long flights later, our team met up in Santa Rosa, California.
+So we decided to try it out. After much planning, canceled bookings, and a few long flights later, our team met up in Santa Rosa, California.
 
 ![offsite office](https://user-images.githubusercontent.com/52545545/211517211-ff1d5503-a367-4e6b-a670-067c447ed415.png)
 
@@ -35,11 +35,11 @@ So, we decided to try it out. After much planning, canceled bookings, and a few 
 
 Our itinerary included architecture planning, a multi-day hackathon, and plenty of fun activities around the Bay Area. 
 
-The focus of the off-site was building. We each defined a few tasks that could realistically be completed by the end of the trip. Here's a short summary of what we accomplished:
+The focus of the off-site was building. We each defined a few tasks that could realistically be completed by the end of the trip. So what did we work on?
 
-* REST API v0: Many IT teams use our snappy web portal to support hundreds of concurrent users without a hitch. However, we’d prefer if you rarely had to open it up. [PR here](https://github.com/firezone/firezone/pull/1155).
-* Updating the Gateway: The Firezone gateway is tightly coupled with the control plane. To support larger teams with multi-site environments, we’ll need to support managing multiple gateways under a single control-plane. Work-in-progress in [this PR](https://github.com/firezone/firezone/pull/1205). 
-* Docs improvements: We wrote a few new docs on debug logs, split tunnel DNS considerations, and common troubleshooting issues. Details in [this PR](https://github.com/firezone/firezone/pull/1194).
+* A new Firezone gateway (coming in 0.8!) that will eventually allow decoupling the web portal from the WireGuard data plane. A single Firezone web portal will soon be able to manage hundreds or even thousands of little Firezone gateways securing access for their respective private resources. More details to come!
+* A [new REST API in 0.7](https://github.com/firezone/firezone/releases) to allow configuring Firezone in a more automatable way. Users love our snappy web portal, but nothing beats the power of an API for automation.
+* Various documentation improvements to improve consistency between Omnibus and Docker sections, detail logging, and implement a v1 style guide.
 
 Of course, a visit to the Bay Area would not be complete without a tour of San Francisco. We visited the usual landmarks and had a lot of seafood.
 
@@ -47,23 +47,22 @@ Of special mention are the team dinners. As someone whose culinary talents rival
 
 ![collage](https://user-images.githubusercontent.com/52545545/211988059-02f3083a-116b-462e-a5ff-90af4fab63fc.png)
 
-If this looks like something you’d be interested in doing, [we’re always hiring](https://www.ycombinator.com/companies/firezone/jobs)!
 
 ## Lessons learned for next time
 
-Since this was our first offsite, some things could have gone better. Here’s a small list of hiccups and our learnings.
+Since this was our first offsite, some things could have gone better. Here’s a small list of hiccups and other things we'd do differently next time around.
 
 ### Close your tabs!
 
 <img src="https://user-images.githubusercontent.com/52545545/211503302-4b2e2e74-06e8-4929-aa5b-a336af25a450.png" width="400" />
 
-If you’re booking an Airbnb, check for planned maintenance and outages. We were notified three days before arrival the power would be out during work hours on two weekdays.
+If you’re booking an Airbnb, check for planned maintenance and outages! We were notified three days before arrival the power would be out during two full workdays.
 
 We made it work by sharing battery banks and migrating to the local coffee shop when our batteries died. Luckily Firezone is just about peak power efficiency for a VPN, so we all gained a few extra minutes of battery.
 
 When you're building software, electricity and internet are pretty much the only things you can't do without. Next time we'll pack a large power bank.
 
-### Lumbar support is under-rated
+### Lumbar support is underrated
 
 You’ll sacrifice some ergonomics when you work out of an Airbnb. Put a premium on large work surfaces, open common areas, and comfortable chairs. We learned the hard way after a few days working hunched over on a sofa.
 
@@ -75,7 +74,7 @@ We got carried away at Costco. Our out-of-town guests had never witnessed the sp
 
 All jokes aside, you’ll need the right fuel for your hackathons and deep product discussions. We recommend stocking up with plenty of coffee and healthy snacks.
 
-### Plan ahead, it will pay off
+### Plan ahead: it'll pay off
 
 As is often the case with startups, we planned the trip on short notice. This meant many last-minute restaurant bookings and trips to the store for basic supplies.
 
